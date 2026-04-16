@@ -4,82 +4,84 @@
 
 set -euo pipefail
 
-# Windows 禁止的字符: < > : " | ? *
-# 以及控制字符（换行符、回车符等）
-# 以及 Unicode 异常空白字符
-# 以及尾部/头部空格
-
-INVALID_CHARS='< > : " | ? *'
-UNICODE_WHITESPACE_PATTERN='\u00a0|\u3000|\u2000|\u2001|\u2002|\u2003|\u2004|\u2005|\u2006|\u2007|\u2008|\u2009|\u200a|\u200b|\u202f|\u205f|\ufeff'
-
-has_errors=0
-
 # 获取所有待提交的文件（包括新增和修改的）
-staged_files=$(git diff --cached --name-only --diff-filter=ACMR -z | tr '\0' '\n' | grep -v '^$')
+staged_files=$(git diff --cached --name-only --diff-filter=ACMR)
 
 if [ -z "$staged_files" ]; then
     exit 0
 fi
 
-for filepath in $staged_files; do
-    filename=$(basename "$filepath")
-    errors=""
-    
+# 使用 Python 进行文件名兼容性检查（更可靠地处理 Unicode）
+python3 -c "
+import sys
+import unicodedata
+import re
+
+WINDOWS_INVALID_CHARS = ['<', '>', ':', '\"', '|', '?', '*']
+UNICODE_WHITESPACE = {
+    '\u00a0', '\u3000', '\u2000', '\u2001', '\u2002', '\u2003',
+    '\u2004', '\u2005', '\u2006', '\u2007', '\u2008', '\u2009',
+    '\u200a', '\u200b', '\u202f', '\u205f', '\ufeff',
+}
+
+files = sys.stdin.read().strip().split('\n')
+has_errors = False
+
+for filepath in files:
+    if not filepath:
+        continue
+    filename = filepath.rsplit('/', 1)[1] if '/' in filepath else filepath
+    errors = []
+
     # 检查换行符和控制字符
-    if echo "$filename" | grep -qP '\n|\r|\t'; then
-        errors="${errors}  [ERROR] 文件名包含控制字符（换行符/回车符/Tab）\n"
-    fi
-    
+    if '\n' in filename or '\r' in filename or '\t' in filename:
+        for ch in ['\n', '\r', '\t']:
+            if ch in filename:
+                ch_name = {'\n': 'LF', '\r': 'CR', '\t': 'Tab'}[ch]
+                errors.append(f'包含控制字符: {ch_name} (U+{ord(ch):04X})')
+
     # 检查 Windows 禁止字符
-    for ch in '<' '>' ':' '"' '|' '?' '*'; do
-        if echo "$filename" | grep -qF "$ch"; then
-            errors="${errors}  [ERROR] 文件名包含 Windows 禁止字符: '$ch'\n"
-        fi
-    done
-    
+    for ch in WINDOWS_INVALID_CHARS:
+        if ch in filename:
+            errors.append(f'包含Windows禁止字符: \"{ch}\" (U+{ord(ch):04X})')
+
     # 检查 Unicode 异常空白字符
-    if echo "$filename" | grep -qP "$UNICODE_WHITESPACE_PATTERN"; then
-        errors="${errors}  [ERROR] 文件名包含 Unicode 异常空白字符（如全角空格 U+3000 等）\n"
-    fi
-    
+    for ch in UNICODE_WHITESPACE:
+        if ch in filename:
+            char_name = unicodedata.name(ch, 'UNKNOWN')
+            errors.append(f'包含异常Unicode空白: U+{ord(ch):04X} ({char_name})')
+
     # 检查尾部空格（在 .md 前或文件名末尾）
-    if echo "$filename" | grep -qP '^\S.*\s+(\.md)?$|^\S.*\s$'; then
-        errors="${errors}  [ERROR] 文件名包含尾部空格\n"
-    fi
-    
+    m = re.search(r'\s+(\.md)?$', filename)
+    if m:
+        errors.append(f'包含尾部空格')
+
     # 检查头部空格
-    if echo "$filename" | grep -qP '^[\s]'; then
-        errors="${errors}  [ERROR] 文件名包含头部空格\n"
-    fi
-    
+    if filename.startswith(' '):
+        errors.append(f'包含头部空格')
+
     # 检查连续多个空格
-    if echo "$filename" | grep -qP '  +'; then
-        errors="${errors}  [WARN] 文件名包含连续多个空格（建议压缩为单空格）\n"
-    fi
-    
-    # 检查路径长度（Windows MAX_PATH 限制）
-    path_len=${#filepath}
-    if [ "$path_len" -gt 260 ]; then
-        errors="${errors}  [WARN] 路径长度 ${path_len} 超过 Windows MAX_PATH 限制 (260)\n"
-    fi
-    
-    if [ -n "$errors" ]; then
-        echo "❌ 文件名不兼容 Windows: $filepath"
-        echo -e "$errors"
-        has_errors=1
-    fi
-done
+    if re.search(r'  +', filename):
+        errors.append(f'包含连续多个空格（建议压缩为单空格）')
 
-if [ "$has_errors" -eq 1 ]; then
-    echo ""
-    echo "⚠️  提交被拒绝：上述文件名在 Windows 上可能导致问题。"
-    echo "   请修复文件名后重新提交。"
-    echo "   修复建议："
-    echo "   - 移除尾部/头部空格"
-    echo "   - 将 <> 替换为 〈〉（CJK角括号）"
-    echo "   - 将 Unicode 异常空白替换为普通空格"
-    echo "   - 移除控制字符（换行符等）"
-    exit 1
-fi
+    # 检查路径长度
+    if len(filepath) > 260:
+        errors.append(f'路径长度 {len(filepath)} 超过Windows MAX_PATH限制(260)')
 
-exit 0
+    if errors:
+        has_errors = True
+        print(f'❌ 文件名不兼容Windows: {filepath}')
+        for e in errors:
+            print(f'  - {e}')
+
+if has_errors:
+    print()
+    print('⚠️  提交被拒绝：上述文件名在Windows上可能导致问题。')
+    print('   请修复文件名后重新提交。')
+    print('   修复建议：')
+    print('   - 移除尾部/头部空格')
+    print('   - 将 <> 替换为 〈〉（CJK角括号）')
+    print('   - 将 Unicode 异常空白替换为普通空格')
+    print('   - 移除控制字符（换行符等）')
+    sys.exit(1)
+" <<< "$staged_files"
