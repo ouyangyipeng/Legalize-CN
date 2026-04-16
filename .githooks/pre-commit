@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# pre-commit hook: 检查文件名是否兼容 Windows
+# 防止引入包含 Windows 禁止字符或异常空白的新文件名
+
+set -euo pipefail
+
+# Windows 禁止的字符: < > : " | ? *
+# 以及控制字符（换行符、回车符等）
+# 以及 Unicode 异常空白字符
+# 以及尾部/头部空格
+
+INVALID_CHARS='< > : " | ? *'
+UNICODE_WHITESPACE_PATTERN='\u00a0|\u3000|\u2000|\u2001|\u2002|\u2003|\u2004|\u2005|\u2006|\u2007|\u2008|\u2009|\u200a|\u200b|\u202f|\u205f|\ufeff'
+
+has_errors=0
+
+# 获取所有待提交的文件（包括新增和修改的）
+staged_files=$(git diff --cached --name-only --diff-filter=ACMR -z | tr '\0' '\n' | grep -v '^$')
+
+if [ -z "$staged_files" ]; then
+    exit 0
+fi
+
+for filepath in $staged_files; do
+    filename=$(basename "$filepath")
+    errors=""
+    
+    # 检查换行符和控制字符
+    if echo "$filename" | grep -qP '\n|\r|\t'; then
+        errors="${errors}  [ERROR] 文件名包含控制字符（换行符/回车符/Tab）\n"
+    fi
+    
+    # 检查 Windows 禁止字符
+    for ch in '<' '>' ':' '"' '|' '?' '*'; do
+        if echo "$filename" | grep -qF "$ch"; then
+            errors="${errors}  [ERROR] 文件名包含 Windows 禁止字符: '$ch'\n"
+        fi
+    done
+    
+    # 检查 Unicode 异常空白字符
+    if echo "$filename" | grep -qP "$UNICODE_WHITESPACE_PATTERN"; then
+        errors="${errors}  [ERROR] 文件名包含 Unicode 异常空白字符（如全角空格 U+3000 等）\n"
+    fi
+    
+    # 检查尾部空格（在 .md 前或文件名末尾）
+    if echo "$filename" | grep -qP '^\S.*\s+(\.md)?$|^\S.*\s$'; then
+        errors="${errors}  [ERROR] 文件名包含尾部空格\n"
+    fi
+    
+    # 检查头部空格
+    if echo "$filename" | grep -qP '^[\s]'; then
+        errors="${errors}  [ERROR] 文件名包含头部空格\n"
+    fi
+    
+    # 检查连续多个空格
+    if echo "$filename" | grep -qP '  +'; then
+        errors="${errors}  [WARN] 文件名包含连续多个空格（建议压缩为单空格）\n"
+    fi
+    
+    # 检查路径长度（Windows MAX_PATH 限制）
+    path_len=${#filepath}
+    if [ "$path_len" -gt 260 ]; then
+        errors="${errors}  [WARN] 路径长度 ${path_len} 超过 Windows MAX_PATH 限制 (260)\n"
+    fi
+    
+    if [ -n "$errors" ]; then
+        echo "❌ 文件名不兼容 Windows: $filepath"
+        echo -e "$errors"
+        has_errors=1
+    fi
+done
+
+if [ "$has_errors" -eq 1 ]; then
+    echo ""
+    echo "⚠️  提交被拒绝：上述文件名在 Windows 上可能导致问题。"
+    echo "   请修复文件名后重新提交。"
+    echo "   修复建议："
+    echo "   - 移除尾部/头部空格"
+    echo "   - 将 <> 替换为 〈〉（CJK角括号）"
+    echo "   - 将 Unicode 异常空白替换为普通空格"
+    echo "   - 移除控制字符（换行符等）"
+    exit 1
+fi
+
+exit 0

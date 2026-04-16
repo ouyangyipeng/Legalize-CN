@@ -1,0 +1,3 @@
+# 跨平台换行符配置：强制所有文本文件使用 LF
+* text=auto eol=lf
+*.md text eol=lf
