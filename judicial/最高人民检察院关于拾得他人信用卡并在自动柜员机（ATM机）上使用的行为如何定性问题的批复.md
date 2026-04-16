@@ -6,7 +6,9 @@ publish_date: "2008-04-18"
 authority: "最高人民检察院"
 doc_id: "NDAyODgxZTQ1ZmZiYmU0MTAxNWZmYzRkNmY3MDA5NDM%3D"
 source_url: "https://flk.npc.gov.cn/detail2.html?NDAyODgxZTQ1ZmZiYmU0MTAxNWZmYzRkNmY3MDA5NDM%3D"
+
 ---
+
 
 # 最高人民检察院关于拾得他人信用卡并在自动柜员机（ATM机）上使用的行为如何定性问题的批复
 
