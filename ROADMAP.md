@@ -225,6 +225,18 @@ Git历史（按时间排序）:
 
 ## 变更日志
 
+### v0.10.0 (2026-04-17)
+- **民法典修正案历史重建完成 — 全部优先级法律P0-P3+民法典全覆盖**
+  - 创建 [`rebuild_civil_code_history.py`](legalize-builder/scripts/rebuild_civil_code_history.py) — 民法典专用处理脚本
+  - 补充婚姻法1950年版（新中国第一部法律！），Wikisource繁体标题 `中華人民共和國婚姻法 (1950年)`
+  - 婚姻法完整历史重建：1950→1980→2001→废止(被民法典取代)
+  - 民法通则/收养法添加"废止commit"（2021-01-01，被民法典废止）
+  - 6部单版本前身法律frontmatter更新（abolish_date/replaced_by）
+  - 民法典frontmatter添加 `predecessor_laws` 元数据（9部前身法律）
+  - 修复涉外民事关系法律适用法status错误（现行有效→已废止）
+  - 关键技术发现：Git 2.34.1不支持1970年前日期（pre-epoch），婚姻法1950年版git日期设为1970-01-01，真实日期1950-04-13记录在frontmatter中
+  - Wikisource API rate-limit问题：403 "Please respect our robot policy"，需要缓存机制避免重复请求
+
 ### v0.9.0 (2026-04-16)
 - **P3批量修正案历史重建完成 — 193部法律全部完成**
   - 创建 [`auto_discover_law_versions.py`](legalize-builder/scripts/auto_discover_law_versions.py) — 自动发现Wikisource上的多版本法律

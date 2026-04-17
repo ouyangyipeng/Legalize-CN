@@ -228,7 +228,13 @@ applies_to: 中华人民共和国刑法
 
 ### 进行中 🔄
 
-- [ ] 民法典修正案历史重建（需特殊处理：合并5部法律）
+无（所有优先级法律已完成）
+
+### 未来计划 📋
+
+- [ ] 更多单版本法律的中间版本挖掘（如Wikisource上有但P3未覆盖的版本）
+- [ ] 法律废止决定的自动化处理
+- [ ] 地方性法规修正案历史重建
 
 ### 重要法律修正案历史重建优先级
 
@@ -237,7 +243,7 @@ applies_to: 中华人民共和国刑法
 | 优先级 | 法律 | 修订次数 | 难度 | 数据源 | 状态 |
 |--------|------|----------|------|--------|------|
 | P0 | 刑事诉讼法 | 3次修订 | ⭐⭐⭐ | Wikisource | ✅ 4版本 |
-| P0 | 民法典（原合同法/物权法等） | 合并5部法律 | ⭐⭐⭐⭐⭐ | 特殊处理 | 🔄 |
+| P0 | 民法典（9部前身法律→1部） | 合并9部法律 | ⭐⭐⭐⭐⭐ | Wikisource + 特殊处理 | ✅ |
 | P1 | 公司法 | 5次修订 | ⭐⭐⭐ | Wikisource | ✅ 6版本 |
 | P1 | 证券法 | 3次修订 | ⭐⭐⭐ | Wikisource | ✅ 4版本 |
 | P1 | 专利法 | 3次修订 | ⭐⭐ | Wikisource | ✅ 5版本 |
@@ -259,7 +265,7 @@ applies_to: 中华人民共和国刑法
 | P2 | 道路交通安全法 | 2次修订 | ⭐⭐ | Wikisource | ✅ 4版本 |
 | P3 | 193部其他重要法律 | 各异 | ⭐～⭐⭐⭐⭐⭐ | Wikisource | ✅ 全自动流水线 |
 
-> 💡 宪法、刑法和P0-P2法律采用了"混合方案"（Wikisource中间版本全文 + 修正案解析 + 手动校验），P3法律采用全自动流水线（[`auto_pipeline_p3.py`](legalize-builder/scripts/auto_pipeline_p3.py)）批量处理。
+> 💡 宪法、刑法和P0-P2法律采用了"混合方案"（Wikisource中间版本全文 + 修正案解析 + 手动校验），P3法律采用全自动流水线（[`auto_pipeline_p3.py`](legalize-builder/scripts/auto_pipeline_p3.py)）批量处理，民法典采用专用脚本（[`rebuild_civil_code_history.py`](legalize-builder/scripts/rebuild_civil_code_history.py)）处理9部前身法律→1部民法典的废止/替代关系。
 
 ## ⚠️ 免责声明
 
